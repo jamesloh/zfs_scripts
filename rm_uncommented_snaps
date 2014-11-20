@@ -1,0 +1,54 @@
+#!/usr/bin/env python
+# rm_uncommented_snaps Copyright (c) 2009 James Loh http://dore.mi.com.my
+#
+#   Permission is hereby granted, free of charge, to any person
+#   obtaining a copy of this software and associated documentation files
+#   (the "Software"), to deal in the Software without restriction,
+#   including without limitation the rights to use, copy, modify, merge,
+#   publish, distribute, sublicense, and/or sell copies of the Software,
+#   and to permit persons to whom the Software is furnished to do so,
+#   subject to the following conditions:
+#
+#   The above copyright notice and this permission notice shall be
+#   included in all copies or substantial portions of the Software.
+#
+#   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS 
+#   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+#   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. 
+#   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY 
+#   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, 
+#   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
+#   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
+
+DAYS_TO_KEEP = 14
+
+import subprocess, string
+snapshot_list_cmd = "zfs list -H -t snapshot| awk '{print $1;}'"
+process = subprocess.Popen(snapshot_list_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+(stdout_str, stderr_str) = process.communicate()
+
+import re
+
+# Get snapshots without comment
+snapshots = []
+for i in range(1,len(string.split(stdout_str,'\n'))-1):
+  s = string.split(string.split(stdout_str,'\n')[i],' ')[0]
+  matchObj = re.match( r'(.*)@(.*?)_(M|T|W|F|S)(o|u|e|h|r|a)(n|e|d|u|i|t)-(\d+)$', s, re.M)
+  if matchObj:
+    snapshots.append(s)
+
+from datetime import datetime, date
+today = datetime.now().date()
+for s in snapshots:
+  matchObj = re.match( r'(.*)@(\d{6})_', s, re.M)
+  if matchObj:
+    datetag = matchObj.group(2)
+    snapdate = date(int("20"+datetag[0:2]),int(datetag[2:4]),int(datetag[4:6]))
+    delta = today - snapdate
+    if delta.days > DAYS_TO_KEEP:
+      snapshot_destroy_cmd =  "zfs destroy -r " + s
+      print snapshot_destroy_cmd
+      process = subprocess.Popen(snapshot_destroy_cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      (stdout_str, stderr_str) = process.communicate()
+      print stdout_str
+      print stderr_str
