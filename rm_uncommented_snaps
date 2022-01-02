@@ -25,35 +25,40 @@ from datetime import datetime, date
 import subprocess
 import re
 
-DAYS_TO_KEEP = 14
+DAYS_TO_KEEP = 7 
 
 comment_pattern = re.compile(r".*@\S{21}-(?P<comment>.*)")
 
-snapshot_list_cmd = "zfs list -t snapshot -H| awk '{print $1;}'"
-cp = subprocess.run([snapshot_list_cmd], shell=True, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-print(cp.stdout)
-print(cp.stderr)
-snapshots = cp.stdout.split('\n')
+def remove_snapshot(snapshot_name):
+    snapshot_destroy_cmd =  "zfs destroy -r " + snapshot_name
+    print(snapshot_destroy_cmd)
+    cp = subprocess.run([snapshot_destroy_cmd], shell=True, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    print(cp.stdout)
+    print(cp.stderr)
 
-today = datetime.now().date()
-for snapshot_name in snapshots:
-    commented = comment_pattern.search(snapshot_name)
-    if (commented):
-        continue
+def main():
+    snapshot_list_cmd = "zfs list -t snapshot -H| awk '{print $1;}'"
+    cp = subprocess.run([snapshot_list_cmd], shell=True, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    print(cp.stderr)
 
-    i = snapshot_name.find('@')
-    if i < 0:
-        continue
+    today = datetime.now().date()
+    for snapshot_name in cp.stdout.split('\n'):
+        commented = comment_pattern.search(snapshot_name)
+        if (commented):
+            continue
+    
+        i = snapshot_name.find('@')
+        if i < 0:
+            continue
+    
+        year = int(snapshot_name[i+1:i+5])
+        month = int(snapshot_name[i+5:i+7])
+        day = int(snapshot_name[i+7:i+9])
+        prev_day = date(year, month, day)
+        delta = today - prev_day
+    
+        if delta.days > DAYS_TO_KEEP:
+            remove_snapshot(snapshot_name)
 
-    year = int(snapshot_name[i+1:i+5])
-    month = int(snapshot_name[i+5:i+7])
-    day = int(snapshot_name[i+7:i+9])
-    prev_day = date(year, month, day)
-    delta = today - prev_day
-
-    if delta.days > DAYS_TO_KEEP:
-      snapshot_destroy_cmd =  "zfs destroy -r " + snapshot_name
-      print(snapshot_destroy_cmd)
-      cp = subprocess.run([snapshot_destroy_cmd], shell=True, universal_newlines=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-      print(cp.stdout)
-      print(cp.stderr)
+if __name__ == "__main__":
+    main()

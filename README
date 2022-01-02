@@ -8,19 +8,19 @@ Configuration:
   Just copy these scripts to /usr/bin
 
 Usage:
-  zfSnap is used to snapshot a filesystem
+  zfSnap is used to snapshot a dataset
   By systematically appending a timestamp to the snapshot name, snapshots become more manageable.
-  Comments can be appended to a snapshot right after the filesystem, e.g., 
-   zfSnap tank/pos daily_backup
+  Comments can be appended to a snapshot right after the dataset, e.g., 
+   zfSnap tank/data daily_backup
 
 Here is a typical crontab.
 
-0,15,30,45 9-21 * * 1-6 zfSnap tank/pos
-0 22 * * 6 su - root -c "zpool scrub extrapool"
+*/15 9-21 * * 1-6 zfSnap tank/data
+0 22 * * 6 su - root -c "zpool scrub tank"
 0 4 * * 6 su - root -c "rm_uncommented_snaps"
 0 8 * * 6 su - root -c "zpool status" | mailx -s "`date` zpool status for storage" admin@example.com
 
-Every 15 mins, the pos filesystem is snapshot. Through the magic of ZFS, a .zfs/snapshot sub-directory will be in pos directory.
+Every 15 mins, the data dataset is snapshot. Through the magic of ZFS, a .zfs/snapshot sub-directory will be in data directory.
 Each snapshot will be stored in a timestamped subdirectory. This makes it extremely easy to copy just the needed file from any snapshot.
 
 
